@@ -13,8 +13,9 @@ if (!$token && isset($_SERVER["HTTP_X_HUB_SIGNATURE"])) {
     $token = $_GET["token"];
 }
 // log the time
-date_default_timezone_set("UTC");
-fputs($file, date("d-m-Y (H:i:s)", $time) . "\n");
+// date_default_timezone_set("UTC");
+// fputs($file, date("d-m-Y (H:i:s)", $time) . "\n");
+fputs($file,var_export($json, true));
 // function to forbid access
 function forbid($file, $reason) {
     // explain why
@@ -49,10 +50,20 @@ if (!empty(TOKEN) && isset($_SERVER["HTTP_X_HUB_SIGNATURE"]) && $token !== hash_
     forbid($file, "No token detected");
 } else {
     // check if pushed branch matches branch specified in config
-    if( array_key_exists('repository',$json)&&array('name',$json['repository'])) {
+    if( array_key_exists('repository',$json)&&array('name',$json['repository'])&&array_key_exists('action',$json)&&$json['action']=='published') {
+        fputs($file,"tagname [".$json['release']['tag_name']."]\n");
+        fputs($file,"author [".$json['release']['author']['login']."]\n");
         $repo =  $json['repository']['name'];
+        if (file_exists(DATADIR.$repo.".git")) {
+            $nl = "\n";
+        } else {
+            $nl = "";
+        }
         fputs($file, "Refreshing repo $repo");
-        touch(DATADIR . $repo . '.git');
+        touch(DATADIR.$repo.'.git');
+        $fileRepo = fopen(DATADIR . $repo.'.git', 'a');
+        fputs($fileRepo, $nl.$json['release']['tag_name']."|".$json['release']['author']['login']);
+        fclose($fileRepo);
     }
 }
 fputs($file, "\n\n" . PHP_EOL);
